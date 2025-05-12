@@ -4,8 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Clock, X, CheckCheck } from 'lucide-react';
+import { Calendar, Clock, X, CheckCheck, Edit } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useNavigate } from "react-router-dom";
 
 interface Appointment {
   id: string;
@@ -58,11 +61,20 @@ const appointments: Appointment[] = [
 
 export const AppointmentHistory = () => {
   const [appointmentList, setAppointmentList] = useState<Appointment[]>(appointments);
+  const navigate = useNavigate();
   
   const cancelAppointment = (id: string) => {
     setAppointmentList(prev => 
       prev.map(app => app.id === id ? { ...app, status: 'canceled' } : app)
     );
+    toast.success("Lịch hẹn đã được hủy thành công");
+  };
+
+  const updateAppointment = (id: string) => {
+    // In a real app, we would redirect to the booking page with the appointment details
+    // For now, we'll simulate this by navigating to the booking tab on the main page
+    navigate('/?tab=booking&updateAppointment=' + id);
+    toast.success("Chuyển đến trang cập nhật lịch hẹn");
   };
 
   const upcomingAppointments = appointmentList.filter(app => app.status === 'upcoming');
@@ -100,7 +112,11 @@ export const AppointmentHistory = () => {
         </div>
         
         {appointment.status === 'upcoming' && (
-          <div className="mt-4 flex justify-end">
+          <div className="mt-4 flex justify-end space-x-2">
+            <Button variant="outline" size="sm" onClick={() => updateAppointment(appointment.id)}>
+              <Edit className="h-4 w-4 mr-1" />
+              Cập nhật lịch
+            </Button>
             <Dialog>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">

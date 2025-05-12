@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import ServiceSelector from "@/components/booking/ServiceSelector";
 import EmployeeSelector, { EmployeeType } from "@/components/booking/EmployeeSelector";
@@ -24,10 +25,38 @@ interface ServiceType {
 
 const Index = () => {
   const { toast } = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [selectedService, setSelectedService] = useState<ServiceType | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeType | null>(null);
   const [appointmentConfirmed, setAppointmentConfirmed] = useState(false);
   const [bookingStep, setBookingStep] = useState<'service' | 'employee' | 'time'>('service');
+  const [activeTab, setActiveTab] = useState('booking');
+
+  // Parse the current URL to check for tab parameter and update appointment
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    const updateAppointmentId = params.get('updateAppointment');
+    
+    if (tab) {
+      setActiveTab(tab);
+    }
+    
+    if (updateAppointmentId) {
+      // In a real app, fetch the appointment details and populate the form
+      toast({
+        title: "Cập nhật lịch hẹn",
+        description: `Đang cập nhật lịch hẹn #${updateAppointmentId}`,
+      });
+      setBookingStep('service');
+    }
+  }, [location, toast]);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    navigate(`/?tab=${value}`);
+  };
 
   const handleServiceSelect = (service: ServiceType) => {
     setSelectedService(service);
@@ -74,7 +103,7 @@ const Index = () => {
             Hệ thống đặt lịch hẹn trực tuyến
           </h1>
           
-          <Tabs defaultValue="booking" className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-8">
               <TabsTrigger value="booking">Đặt lịch</TabsTrigger>
               <TabsTrigger value="manage">Quản lý lịch hẹn</TabsTrigger>
