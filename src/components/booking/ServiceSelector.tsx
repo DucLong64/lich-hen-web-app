@@ -1,18 +1,10 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Clock } from 'lucide-react';
+import { ServiceType } from '@/types/ServiceType';
 
-interface ServiceType {
-  id: string;
-  name: string;
-  description: string;
-  duration: string;
-  price: string;
-  category: string;
-}
-
+// Sample services data
 const services: ServiceType[] = [
   {
     id: '1',

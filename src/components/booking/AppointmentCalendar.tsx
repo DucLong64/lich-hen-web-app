@@ -1,20 +1,11 @@
-
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { CalendarPlus, Clock } from 'lucide-react';
-import { EmployeeType } from './EmployeeSelector';
-
-interface ServiceType {
-  id: string;
-  name: string;
-  description: string;
-  duration: string;
-  price: string;
-  category: string;
-}
+import { ServiceType } from '@/types/ServiceType';
+import { EmployeeType } from '@/types/EmployeeType';
 
 // Simulate already booked slots
 const bookedSlots: Record<string, string[]> = {

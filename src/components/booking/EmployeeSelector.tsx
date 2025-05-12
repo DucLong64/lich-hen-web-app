@@ -1,17 +1,9 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
-
-export interface EmployeeType {
-  id: string;
-  name: string;
-  position: string;
-  availability: string[];
-  avatar: string;
-  specialties: string[];
-}
+import { ServiceType } from '@/types/ServiceType';
+import { EmployeeType } from '@/types/EmployeeType';
 
 // Sample employees data
 const employees: EmployeeType[] = [
@@ -48,15 +40,6 @@ const employees: EmployeeType[] = [
     specialties: ['Massage trị liệu', 'Chăm sóc da mặt']
   }
 ];
-
-interface ServiceType {
-  id: string;
-  name: string;
-  description: string;
-  duration: string;
-  price: string;
-  category: string;
-}
 
 export const EmployeeSelector: React.FC<{
   selectedService: ServiceType | null;
