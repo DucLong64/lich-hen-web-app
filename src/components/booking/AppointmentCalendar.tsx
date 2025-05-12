@@ -5,6 +5,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { CalendarPlus, Clock } from 'lucide-react';
+import { EmployeeType } from './EmployeeSelector';
 
 interface ServiceType {
   id: string;
@@ -15,11 +16,6 @@ interface ServiceType {
   category: string;
 }
 
-const timeSlots = [
-  '08:00', '09:00', '10:00', '11:00', 
-  '13:00', '14:00', '15:00', '16:00', '17:00'
-];
-
 // Simulate already booked slots
 const bookedSlots: Record<string, string[]> = {
   '2025-05-16': ['09:00', '14:00'],
@@ -29,18 +25,19 @@ const bookedSlots: Record<string, string[]> = {
 
 export const AppointmentCalendar: React.FC<{
   selectedService: ServiceType | null;
+  selectedEmployee: EmployeeType | null;
   onAppointmentConfirm: (date: Date, time: string) => void;
-}> = ({ selectedService, onAppointmentConfirm }) => {
+}> = ({ selectedService, selectedEmployee, onAppointmentConfirm }) => {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [selectedTime, setSelectedTime] = useState<string>('');
 
-  if (!selectedService) {
+  if (!selectedService || !selectedEmployee) {
     return (
       <div className="text-center p-8">
         <CalendarPlus className="mx-auto h-12 w-12 text-muted-foreground" />
-        <h3 className="mt-4 text-lg font-medium">Chưa chọn dịch vụ</h3>
+        <h3 className="mt-4 text-lg font-medium">Vui lòng chọn dịch vụ và nhân viên</h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          Vui lòng chọn một dịch vụ để xem lịch hẹn có sẵn.
+          Bạn cần chọn dịch vụ và nhân viên để xem lịch hẹn có sẵn.
         </p>
       </div>
     );
@@ -48,6 +45,10 @@ export const AppointmentCalendar: React.FC<{
 
   const formattedDate = date ? format(date, 'yyyy-MM-dd') : '';
   const unavailableTimes = bookedSlots[formattedDate] || [];
+  
+  // Use the employee's availability instead of fixed time slots
+  const timeSlots = selectedEmployee.availability;
+  
   const availableTimeSlots = timeSlots.filter(time => !unavailableTimes.includes(time));
 
   const handleConfirm = () => {
@@ -67,7 +68,7 @@ export const AppointmentCalendar: React.FC<{
         <CardHeader>
           <CardTitle>Chọn ngày và giờ</CardTitle>
           <CardDescription>
-            Đặt lịch cho dịch vụ: {selectedService.name}
+            Đặt lịch cho dịch vụ: {selectedService.name} với {selectedEmployee.name}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -101,7 +102,7 @@ export const AppointmentCalendar: React.FC<{
                   ))
                 ) : (
                   <div className="col-span-full text-center text-muted-foreground p-2">
-                    Không có lịch trống trong ngày này
+                    Nhân viên không có lịch trống trong ngày này
                   </div>
                 )}
               </div>
