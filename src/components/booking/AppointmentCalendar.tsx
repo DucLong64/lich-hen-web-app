@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { Calendar } from "@/components/ui/calendar";
@@ -14,6 +15,9 @@ const bookedSlots: Record<string, string[]> = {
   '2025-05-18': ['10:00', '15:00'],
 };
 
+// Default available time slots when no employee is selected
+const defaultTimeSlots = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+
 export const AppointmentCalendar: React.FC<{
   selectedService: ServiceType | null;
   selectedEmployee: EmployeeType | null;
@@ -22,13 +26,13 @@ export const AppointmentCalendar: React.FC<{
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [selectedTime, setSelectedTime] = useState<string>('');
 
-  if (!selectedService || !selectedEmployee) {
+  if (!selectedService) {
     return (
       <div className="text-center p-8">
         <CalendarPlus className="mx-auto h-12 w-12 text-muted-foreground" />
-        <h3 className="mt-4 text-lg font-medium">Vui lòng chọn dịch vụ và nhân viên</h3>
+        <h3 className="mt-4 text-lg font-medium">Vui lòng chọn dịch vụ</h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          Bạn cần chọn dịch vụ và nhân viên để xem lịch hẹn có sẵn.
+          Bạn cần chọn dịch vụ để xem lịch hẹn có sẵn.
         </p>
       </div>
     );
@@ -37,8 +41,8 @@ export const AppointmentCalendar: React.FC<{
   const formattedDate = date ? format(date, 'yyyy-MM-dd') : '';
   const unavailableTimes = bookedSlots[formattedDate] || [];
   
-  // Use the employee's availability instead of fixed time slots
-  const timeSlots = selectedEmployee.availability;
+  // Use the employee's availability or default time slots
+  const timeSlots = selectedEmployee ? selectedEmployee.availability : defaultTimeSlots;
   
   const availableTimeSlots = timeSlots.filter(time => !unavailableTimes.includes(time));
 
@@ -59,7 +63,8 @@ export const AppointmentCalendar: React.FC<{
         <CardHeader>
           <CardTitle>Chọn ngày và giờ</CardTitle>
           <CardDescription>
-            Đặt lịch cho dịch vụ: {selectedService.name} với {selectedEmployee.name}
+            Đặt lịch cho dịch vụ: {selectedService.name}
+            {selectedEmployee && ` với ${selectedEmployee.name}`}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -93,7 +98,7 @@ export const AppointmentCalendar: React.FC<{
                   ))
                 ) : (
                   <div className="col-span-full text-center text-muted-foreground p-2">
-                    Nhân viên không có lịch trống trong ngày này
+                    Không có lịch trống trong ngày này
                   </div>
                 )}
               </div>

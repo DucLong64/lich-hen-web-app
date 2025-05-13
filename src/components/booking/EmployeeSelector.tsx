@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -43,7 +44,7 @@ const employees: EmployeeType[] = [
 
 export const EmployeeSelector: React.FC<{
   selectedService: ServiceType | null;
-  onEmployeeSelect: (employee: EmployeeType) => void;
+  onEmployeeSelect: (employee: EmployeeType | null) => void;
 }> = ({ selectedService, onEmployeeSelect }) => {
   if (!selectedService) {
     return null;
@@ -56,7 +57,7 @@ export const EmployeeSelector: React.FC<{
 
   return (
     <div className="space-y-6">
-      <h3 className="text-lg font-medium">Chọn nhân viên phục vụ</h3>
+      <h3 className="text-lg font-medium">Chọn nhân viên phục vụ (tùy chọn)</h3>
       
       {availableEmployees.length === 0 ? (
         <div className="text-center p-4 border rounded-md bg-muted/20">

@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { ChevronLeft } from "lucide-react";
 import ServiceSelector from "@/components/booking/ServiceSelector";
 import EmployeeSelector from "@/components/booking/EmployeeSelector";
 import AppointmentCalendar from "@/components/booking/AppointmentCalendar";
@@ -30,12 +31,28 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
     });
   };
 
-  const handleEmployeeSelect = (employee: EmployeeType) => {
+  const handleEmployeeSelect = (employee: EmployeeType | null) => {
     setSelectedEmployee(employee);
     setBookingStep('time');
+    if (employee) {
+      toast({
+        title: "Nhân viên đã chọn",
+        description: `Bạn đã chọn nhân viên: ${employee.name}`,
+      });
+    } else {
+      toast({
+        title: "Tiếp tục đặt lịch",
+        description: "Bạn đã bỏ qua bước chọn nhân viên",
+      });
+    }
+  };
+
+  const handleSkipEmployeeSelection = () => {
+    setSelectedEmployee(null);
+    setBookingStep('time');
     toast({
-      title: "Nhân viên đã chọn",
-      description: `Bạn đã chọn nhân viên: ${employee.name}`,
+      title: "Tiếp tục đặt lịch",
+      description: "Bạn đã bỏ qua bước chọn nhân viên",
     });
   };
 
@@ -43,7 +60,9 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
     setAppointmentConfirmed(true);
     toast({
       title: "Đặt lịch thành công",
-      description: `Lịch hẹn của bạn với ${selectedEmployee?.name} đã được xác nhận vào lúc ${time} ngày ${date.toLocaleDateString()}`,
+      description: selectedEmployee 
+        ? `Lịch hẹn của bạn với ${selectedEmployee.name} đã được xác nhận vào lúc ${time} ngày ${date.toLocaleDateString()}`
+        : `Lịch hẹn của bạn đã được xác nhận vào lúc ${time} ngày ${date.toLocaleDateString()}`,
     });
   };
 
@@ -52,6 +71,14 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
     setSelectedEmployee(null);
     setAppointmentConfirmed(false);
     setBookingStep('service');
+  };
+
+  const handleBack = () => {
+    if (bookingStep === 'employee') {
+      setBookingStep('service');
+    } else if (bookingStep === 'time') {
+      setBookingStep('employee');
+    }
   };
 
   return (
@@ -67,10 +94,22 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
           <div className={`flex items-center justify-center w-8 h-8 rounded-full ${bookingStep === 'time' ? 'bg-primary text-white' : 'bg-gray-200'}`}>3</div>
           <div className="ml-3 text-sm text-muted-foreground">
             {bookingStep === 'service' && 'Chọn dịch vụ'}
-            {bookingStep === 'employee' && 'Chọn nhân viên'}
+            {bookingStep === 'employee' && 'Chọn nhân viên (tùy chọn)'}
             {bookingStep === 'time' && 'Chọn thời gian'}
           </div>
         </div>
+        
+        {bookingStep !== 'service' && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleBack} 
+            className="mb-4 flex items-center gap-1"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Quay lại
+          </Button>
+        )}
         
         {bookingStep === 'service' && (
           <ServiceSelector onServiceSelect={handleServiceSelect} />
@@ -85,13 +124,14 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
                 <span>Thời gian: {selectedService?.duration}</span>
                 <span className="font-medium">{selectedService?.price}</span>
               </div>
+            </div>
+            <div className="mb-4">
               <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setBookingStep('service')}
-                className="mt-2"
+                variant="secondary" 
+                onClick={handleSkipEmployeeSelection}
+                className="w-full"
               >
-                Chọn dịch vụ khác
+                Bỏ qua chọn nhân viên
               </Button>
             </div>
             <EmployeeSelector 
@@ -101,7 +141,7 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
           </>
         )}
         
-        {bookingStep === 'time' && selectedEmployee && (
+        {bookingStep === 'time' && (
           <>
             <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
               <h3 className="font-medium">Thông tin đã chọn</h3>
@@ -110,19 +150,13 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
                   <p className="text-muted-foreground">Dịch vụ:</p>
                   <p>{selectedService?.name}</p>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Nhân viên:</p>
-                  <p>{selectedEmployee.name}</p>
-                </div>
+                {selectedEmployee && (
+                  <div>
+                    <p className="text-muted-foreground">Nhân viên:</p>
+                    <p>{selectedEmployee.name}</p>
+                  </div>
+                )}
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setBookingStep('employee')}
-                className="mt-2"
-              >
-                Chọn nhân viên khác
-              </Button>
             </div>
             <AppointmentCalendar 
               selectedService={selectedService}
@@ -156,7 +190,7 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
                 <span className="font-medium">Bước 1:</span> Chọn dịch vụ bạn muốn đặt lịch
               </li>
               <li className="p-3 bg-white rounded-md shadow-sm">
-                <span className="font-medium">Bước 2:</span> Chọn nhân viên phù hợp với nhu cầu của bạn
+                <span className="font-medium">Bước 2:</span> Chọn nhân viên phù hợp với nhu cầu (tùy chọn)
               </li>
               <li className="p-3 bg-white rounded-md shadow-sm">
                 <span className="font-medium">Bước 3:</span> Chọn ngày và giờ phù hợp với lịch trình của bạn
