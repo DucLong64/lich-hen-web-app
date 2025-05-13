@@ -7,10 +7,8 @@ import { Button } from '@/components/ui/button';
 import { CalendarPlus, Clock } from 'lucide-react';
 import { ServiceType } from '@/types/ServiceType';
 import { EmployeeType } from '@/types/EmployeeType';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Simulate already booked slots
 const bookedSlots: Record<string, string[]> = {
@@ -18,9 +16,6 @@ const bookedSlots: Record<string, string[]> = {
   '2025-05-17': ['08:00', '11:00', '13:00'],
   '2025-05-18': ['10:00', '15:00'],
 };
-
-// Default available time slots when no employee is selected
-const defaultTimeSlots = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
 
 // Generate hours options
 const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
@@ -34,8 +29,6 @@ export const AppointmentCalendar: React.FC<{
   onAppointmentConfirm: (date: Date, time: string) => void;
 }> = ({ selectedService, selectedEmployee, onAppointmentConfirm }) => {
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const [selectedTime, setSelectedTime] = useState<string>('');
-  const [timeSelectionMode, setTimeSelectionMode] = useState<'preset' | 'custom'>('preset');
   const [customHour, setCustomHour] = useState('09');
   const [customMinute, setCustomMinute] = useState('00');
 
@@ -54,23 +47,14 @@ export const AppointmentCalendar: React.FC<{
   const formattedDate = date ? format(date, 'yyyy-MM-dd') : '';
   const unavailableTimes = bookedSlots[formattedDate] || [];
   
-  // Use the employee's availability or default time slots
-  const timeSlots = selectedEmployee ? selectedEmployee.availability : defaultTimeSlots;
-  
-  const availableTimeSlots = timeSlots.filter(time => !unavailableTimes.includes(time));
-
   const handleCustomTimeChange = (hour: string, minute: string) => {
     setCustomHour(hour);
     setCustomMinute(minute);
-    setSelectedTime(`${hour}:${minute}`);
   };
 
   const handleConfirm = () => {
     if (date) {
-      let timeString = selectedTime;
-      if (timeSelectionMode === 'custom') {
-        timeString = `${customHour}:${customMinute}`;
-      }
+      const timeString = `${customHour}:${customMinute}`;
 
       if (timeString) {
         const [hours, minutes] = timeString.split(':');
@@ -113,88 +97,53 @@ export const AppointmentCalendar: React.FC<{
           <div>
             <h3 className="mb-2 text-sm font-medium">Chọn giờ:</h3>
             {date && (
-              <Tabs value={timeSelectionMode} onValueChange={(v) => setTimeSelectionMode(v as 'preset' | 'custom')}>
-                <TabsList className="grid w-full grid-cols-2 mb-4">
-                  <TabsTrigger value="preset">Giờ có sẵn</TabsTrigger>
-                  <TabsTrigger value="custom">Tùy chọn</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="preset">
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-                    {availableTimeSlots.length > 0 ? (
-                      availableTimeSlots.map((time) => (
-                        <Button
-                          key={time}
-                          variant={selectedTime === time && timeSelectionMode === 'preset' ? "default" : "outline"}
-                          size="sm"
-                          className="flex items-center justify-center"
-                          onClick={() => {
-                            setSelectedTime(time);
-                            setTimeSelectionMode('preset');
-                          }}
-                        >
-                          <Clock className="mr-1 h-3 w-3" />
-                          {time}
-                        </Button>
-                      ))
-                    ) : (
-                      <div className="col-span-full text-center text-muted-foreground p-2">
-                        Không có lịch trống trong ngày này
-                      </div>
-                    )}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="hour">Giờ</Label>
+                    <Select 
+                      value={customHour} 
+                      onValueChange={value => handleCustomTimeChange(value, customMinute)}
+                    >
+                      <SelectTrigger id="hour">
+                        <SelectValue placeholder="Chọn giờ" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {hours.map(hour => (
+                          <SelectItem key={hour} value={hour}>
+                            {hour}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                </TabsContent>
-                
-                <TabsContent value="custom">
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="hour">Giờ</Label>
-                        <Select 
-                          value={customHour} 
-                          onValueChange={value => handleCustomTimeChange(value, customMinute)}
-                        >
-                          <SelectTrigger id="hour">
-                            <SelectValue placeholder="Chọn giờ" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {hours.map(hour => (
-                              <SelectItem key={hour} value={hour}>
-                                {hour}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="minute">Phút</Label>
-                        <Select 
-                          value={customMinute} 
-                          onValueChange={value => handleCustomTimeChange(customHour, value)}
-                        >
-                          <SelectTrigger id="minute">
-                            <SelectValue placeholder="Chọn phút" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {minutes.map(minute => (
-                              <SelectItem key={minute} value={minute}>
-                                {minute}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    
-                    {isCustomTimeBooked() && (
-                      <div className="text-red-500 text-sm">
-                        Thời gian này đã được đặt. Vui lòng chọn thời gian khác.
-                      </div>
-                    )}
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="minute">Phút</Label>
+                    <Select 
+                      value={customMinute} 
+                      onValueChange={value => handleCustomTimeChange(customHour, value)}
+                    >
+                      <SelectTrigger id="minute">
+                        <SelectValue placeholder="Chọn phút" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {minutes.map(minute => (
+                          <SelectItem key={minute} value={minute}>
+                            {minute}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                </TabsContent>
-              </Tabs>
+                </div>
+                
+                {isCustomTimeBooked() && (
+                  <div className="text-red-500 text-sm">
+                    Thời gian này đã được đặt. Vui lòng chọn thời gian khác.
+                  </div>
+                )}
+              </div>
             )}
 
             {!date && (
@@ -209,9 +158,7 @@ export const AppointmentCalendar: React.FC<{
             onClick={handleConfirm} 
             className="w-full"
             disabled={
-              !date || 
-              (timeSelectionMode === 'preset' && !selectedTime) || 
-              (timeSelectionMode === 'custom' && isCustomTimeBooked())
+              !date || isCustomTimeBooked()
             }
           >
             Xác nhận lịch hẹn
