@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -5,6 +6,10 @@ import { ChevronLeft } from "lucide-react";
 import ServiceSelector from "@/components/booking/ServiceSelector";
 import EmployeeSelector from "@/components/booking/EmployeeSelector";
 import AppointmentCalendar from "@/components/booking/AppointmentCalendar";
+import StepIndicator from "@/components/booking/StepIndicator";
+import BookingGuide from "@/components/booking/BookingGuide";
+import ServiceSummary from "@/components/booking/ServiceSummary";
+import BookingConfirmation from "@/components/booking/BookingConfirmation";
 import { ServiceType } from '@/types/ServiceType';
 import { EmployeeType } from '@/types/EmployeeType';
 
@@ -86,18 +91,7 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
       <div>
         <h2 className="text-2xl font-semibold mb-4">Quy trình đặt lịch</h2>
         
-        <div className="flex items-center mb-6">
-          <div className={`flex items-center justify-center w-8 h-8 rounded-full ${bookingStep === 'service' ? 'bg-primary text-white' : 'bg-gray-200'}`}>1</div>
-          <div className="h-1 w-10 bg-gray-200 mx-1"></div>
-          <div className={`flex items-center justify-center w-8 h-8 rounded-full ${bookingStep === 'employee' ? 'bg-primary text-white' : 'bg-gray-200'}`}>2</div>
-          <div className="h-1 w-10 bg-gray-200 mx-1"></div>
-          <div className={`flex items-center justify-center w-8 h-8 rounded-full ${bookingStep === 'time' ? 'bg-primary text-white' : 'bg-gray-200'}`}>3</div>
-          <div className="ml-3 text-sm text-muted-foreground">
-            {bookingStep === 'service' && 'Chọn dịch vụ'}
-            {bookingStep === 'employee' && 'Chọn nhân viên (tùy chọn)'}
-            {bookingStep === 'time' && 'Chọn thời gian'}
-          </div>
-        </div>
+        <StepIndicator currentStep={bookingStep} />
         
         {bookingStep !== 'service' && (
           <Button 
@@ -117,14 +111,11 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
         
         {bookingStep === 'employee' && (
           <>
-            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
-              <h3 className="font-medium">Dịch vụ đã chọn: {selectedService?.name}</h3>
-              <p className="text-sm text-muted-foreground">{selectedService?.description}</p>
-              <div className="mt-2 flex justify-between text-sm">
-                <span>Thời gian: {selectedService?.duration}</span>
-                <span className="font-medium">{selectedService?.price}</span>
-              </div>
-            </div>
+            <ServiceSummary 
+              selectedService={selectedService} 
+              selectedEmployee={null} 
+              step="employee" 
+            />
             <div className="mb-4">
               <Button 
                 variant="secondary" 
@@ -143,21 +134,11 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
         
         {bookingStep === 'time' && (
           <>
-            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
-              <h3 className="font-medium">Thông tin đã chọn</h3>
-              <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Dịch vụ:</p>
-                  <p>{selectedService?.name}</p>
-                </div>
-                {selectedEmployee && (
-                  <div>
-                    <p className="text-muted-foreground">Nhân viên:</p>
-                    <p>{selectedEmployee.name}</p>
-                  </div>
-                )}
-              </div>
-            </div>
+            <ServiceSummary 
+              selectedService={selectedService} 
+              selectedEmployee={selectedEmployee} 
+              step="time" 
+            />
             <AppointmentCalendar 
               selectedService={selectedService}
               selectedEmployee={selectedEmployee}
@@ -167,40 +148,12 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
         )}
         
         {appointmentConfirmed && (
-          <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-md">
-            <h3 className="text-lg font-medium text-green-800">Đặt lịch thành công!</h3>
-            <p className="mt-2 text-green-700">
-              Thông tin xác nhận đã được gửi đến email của bạn. Cảm ơn bạn đã đặt lịch.
-            </p>
-            <div className="mt-4">
-              <Button onClick={handleReset}>
-                Đặt lịch mới
-              </Button>
-            </div>
-          </div>
+          <BookingConfirmation onReset={handleReset} />
         )}
       </div>
       
       <div className={bookingStep !== 'service' ? 'hidden md:block' : ''}>
-        {bookingStep === 'service' && (
-          <div className="bg-gray-100 rounded-lg p-6 h-full">
-            <h2 className="text-2xl font-semibold mb-4">Hướng dẫn đặt lịch</h2>
-            <ol className="space-y-4 list-decimal list-inside">
-              <li className="p-3 bg-white rounded-md shadow-sm">
-                <span className="font-medium">Bước 1:</span> Chọn dịch vụ bạn muốn đặt lịch
-              </li>
-              <li className="p-3 bg-white rounded-md shadow-sm">
-                <span className="font-medium">Bước 2:</span> Chọn nhân viên phù hợp với nhu cầu (tùy chọn)
-              </li>
-              <li className="p-3 bg-white rounded-md shadow-sm">
-                <span className="font-medium">Bước 3:</span> Chọn ngày và giờ phù hợp với lịch trình của bạn
-              </li>
-              <li className="p-3 bg-white rounded-md shadow-sm">
-                <span className="font-medium">Bước 4:</span> Xác nhận thông tin và hoàn tất đặt lịch
-              </li>
-            </ol>
-          </div>
-        )}
+        {bookingStep === 'service' && <BookingGuide />}
       </div>
     </div>
   );
