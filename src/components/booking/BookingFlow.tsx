@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronLeft } from "lucide-react";
@@ -7,7 +6,6 @@ import ServiceSelector from "@/components/booking/ServiceSelector";
 import EmployeeSelector from "@/components/booking/EmployeeSelector";
 import TimeSlots from "@/components/booking/TimeSlots";
 import StepIndicator from "@/components/booking/StepIndicator";
-import BookingGuide from "@/components/booking/BookingGuide";
 import ServiceSummary from "@/components/booking/ServiceSummary";
 import BookingConfirmation from "@/components/booking/BookingConfirmation";
 import { ServiceType } from '@/types/ServiceType';
@@ -19,6 +17,7 @@ interface BookingFlowProps {
 
 const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
   const { toast } = useToast();
+
   const [selectedService, setSelectedService] = useState<ServiceType | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeType | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -27,6 +26,45 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
   const [appointmentConfirmed, setAppointmentConfirmed] = useState(false);
   const [bookingStep, setBookingStep] = useState<'service' | 'time' | 'employee' | 'confirm'>('service');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Danh sách nhân viên khả dụng lấy từ backend
+  const [availableEmployees, setAvailableEmployees] = useState<EmployeeType[]>([]);
+
+  // Khi bước chọn nhân viên active và có đủ dữ liệu, gọi API lấy nhân viên khả dụng
+  useEffect(() => {
+    if (bookingStep === 'employee' && selectedService && selectedDate && selectedTimeSlot) {
+      const appointmentDate = new Date(selectedDate);
+      const [hours, minutes] = selectedTimeSlot.split(':').map(Number);
+      appointmentDate.setHours(hours, minutes, 0, 0);
+
+      fetch(`http://localhost:9090/api/availability/${selectedService.id}?time=${appointmentDate.toISOString()}`)
+        .then(response => {
+          if (!response.ok) throw new Error('Không thể tải danh sách nhân viên');
+          return response.json();
+        })
+        .then((data: { employeeId: number; name: string }[]) => {
+          const mappedEmployees = data.map(emp => ({
+            id: emp.employeeId.toString(),
+            name: emp.name,
+            position: '',
+            avatar: '',
+            specialties: [],
+          }));
+          setAvailableEmployees(mappedEmployees);
+        })
+        .catch(err => {
+          console.error(err);
+          setAvailableEmployees([]);
+          toast({
+            title: "Lỗi tải nhân viên",
+            description: "Không thể tải danh sách nhân viên. Vui lòng thử lại sau.",
+            variant: "destructive"
+          });
+        });
+    } else {
+      setAvailableEmployees([]);
+    }
+  }, [bookingStep, selectedService, selectedDate, selectedTimeSlot, toast]);
 
   const handleServiceSelect = (service: ServiceType) => {
     setSelectedService(service);
@@ -45,6 +83,7 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
     setSelectedDate(date);
     setSelectedTimeSlot(timeSlot);
     setBookingStep('employee');
+    setSelectedEmployee(null);
     toast({
       title: "Thời gian đã chọn",
       description: `Bạn đã chọn lịch hẹn vào lúc ${timeSlot} ngày ${date.toLocaleDateString()}`,
@@ -67,12 +106,18 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
     }
   };
 
+  // Người dùng không chọn nhân viên => random 1 nhân viên trong danh sách có sẵn
   const handleSkipEmployeeSelection = () => {
-    setSelectedEmployee(null);
+    if (availableEmployees.length > 0) {
+      const randomIndex = Math.floor(Math.random() * availableEmployees.length);
+      setSelectedEmployee(availableEmployees[randomIndex]);
+    } else {
+      setSelectedEmployee(null);
+    }
     setBookingStep('confirm');
     toast({
       title: "Tự động chọn nhân viên",
-      description: "Hệ thống sẽ tự động chọn nhân viên phù hợp cho bạn",
+      description: "Hệ thống đã tự động chọn nhân viên phù hợp cho bạn",
     });
   };
 
@@ -80,37 +125,32 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
     if (!selectedService || !selectedDate || !selectedTimeSlot) {
       return;
     }
-
     setIsSubmitting(true);
 
-    // Create time from timeSlot string (format: "HH:MM")
-    const [hours, minutes] = selectedTimeSlot.split(':');
     const appointmentDate = new Date(selectedDate);
-    appointmentDate.setHours(parseInt(hours), parseInt(minutes));
-
-    // Parse duration from string like "30 phút" to get the number
-    const durationMatch = selectedService.duration.match(/\d+/);
-    const duringTime = durationMatch ? parseInt(durationMatch[0], 10) : 30;
+    const [hours, minutes] = selectedTimeSlot.split(':').map(Number);
+    appointmentDate.setHours(hours, minutes, 0, 0);
 
     const appointmentData = {
+      customerId: null,  // Nếu bạn có user đăng nhập, truyền vào ID thực tế
       serviceId: parseInt(selectedService.id, 10),
-      startTime: appointmentDate.toISOString(),
-      duringTime: duringTime,
+      serviceName: selectedService.name,
       employeeId: selectedEmployee ? parseInt(selectedEmployee.id, 10) : null,
-      notes: notes.trim()
+      time: appointmentDate.toISOString(),
+      notes: notes.trim(),
     };
 
-    // Call the API to create appointment
     fetch('http://localhost:9090/api/appointment', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(appointmentData),
     })
       .then(response => {
+        if (response.status === 409) {
+          throw new Error('Lịch hẹn bị trùng');
+        }
         if (!response.ok) {
-          throw new Error(`Error ${response.status}: ${response.statusText}`);
+          throw new Error(`Lỗi ${response.status}: ${response.statusText}`);
         }
         return response.json();
       })
@@ -118,22 +158,19 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
         setAppointmentConfirmed(true);
         toast({
           title: "Đặt lịch thành công",
-          description: selectedEmployee 
+          description: selectedEmployee
             ? `Lịch hẹn của bạn với ${selectedEmployee.name} đã được xác nhận vào lúc ${selectedTimeSlot} ngày ${appointmentDate.toLocaleDateString()}`
             : `Lịch hẹn của bạn đã được xác nhận vào lúc ${selectedTimeSlot} ngày ${appointmentDate.toLocaleDateString()}`,
         });
       })
       .catch(error => {
-        console.error('Error creating appointment:', error);
         toast({
           title: "Đặt lịch thất bại",
-          description: "Có lỗi xảy ra khi đặt lịch. Vui lòng thử lại sau.",
+          description: error.message || "Có lỗi xảy ra khi đặt lịch. Vui lòng thử lại sau.",
           variant: "destructive"
         });
       })
-      .finally(() => {
-        setIsSubmitting(false);
-      });
+      .finally(() => setIsSubmitting(false));
   };
 
   const handleReset = () => {
@@ -147,13 +184,9 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
   };
 
   const handleBack = () => {
-    if (bookingStep === 'time') {
-      setBookingStep('service');
-    } else if (bookingStep === 'employee') {
-      setBookingStep('time');
-    } else if (bookingStep === 'confirm') {
-      setBookingStep('employee');
-    }
+    if (bookingStep === 'time') setBookingStep('service');
+    else if (bookingStep === 'employee') setBookingStep('time');
+    else if (bookingStep === 'confirm') setBookingStep('employee');
   };
 
   const handleNotesChange = (value: string) => {
@@ -163,66 +196,64 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
   return (
     <div className="max-w-3xl mx-auto">
       <h2 className="text-2xl font-semibold mb-4">Quy trình đặt lịch</h2>
-      
+
       <StepIndicator currentStep={bookingStep} />
-      
+
       {bookingStep !== 'service' && (
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={handleBack} 
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleBack}
           className="mb-4 flex items-center gap-1"
         >
           <ChevronLeft className="h-4 w-4" />
           Quay lại
         </Button>
       )}
-      
+
       {bookingStep === 'service' && (
         <div className="space-y-6">
           <ServiceSelector onServiceSelect={handleServiceSelect} />
         </div>
       )}
-      
+
       {bookingStep === 'time' && (
         <div className="space-y-6">
-          <ServiceSummary 
-            selectedService={selectedService} 
+          <ServiceSummary
+            selectedService={selectedService}
             selectedEmployee={null}
-            step="time" 
+            step="time"
           />
-          <TimeSlots 
+          <TimeSlots
             selectedService={selectedService}
             onTimeSelect={handleTimeSelect}
           />
         </div>
       )}
-      
+
       {bookingStep === 'employee' && (
         <div className="space-y-6">
-          <ServiceSummary 
-            selectedService={selectedService} 
-            selectedEmployee={null} 
-            step="employee" 
+          <ServiceSummary
+            selectedService={selectedService}
+            selectedEmployee={null}
+            step="employee"
           />
           <div className="mb-4">
-            <Button 
-              variant="secondary" 
+            <Button
+              variant="secondary"
               onClick={handleSkipEmployeeSelection}
               className="w-full"
             >
               Tự động chọn nhân viên
             </Button>
           </div>
-          <EmployeeSelector 
-            selectedService={selectedService}
-            selectedDate={selectedDate}
-            selectedTimeSlot={selectedTimeSlot}
-            onEmployeeSelect={handleEmployeeSelect} 
+          <EmployeeSelector
+            employees={availableEmployees}
+            onEmployeeSelect={handleEmployeeSelect}
           />
         </div>
       )}
-      
+
       {bookingStep === 'confirm' && (
         <div className="space-y-6">
           <div className="bg-muted p-4 rounded-md">
@@ -233,7 +264,7 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
               <p><span className="font-medium">Nhân viên:</span> {selectedEmployee?.name || 'Hệ thống sẽ tự động chọn'}</p>
               <div className="mt-4">
                 <label htmlFor="notes" className="block text-sm font-medium mb-1">Ghi chú:</label>
-                <textarea 
+                <textarea
                   id="notes"
                   className="w-full p-2 border rounded-md"
                   value={notes}
@@ -243,8 +274,8 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
               </div>
             </div>
             <div className="mt-4">
-              <Button 
-                onClick={handleAppointmentConfirm} 
+              <Button
+                onClick={handleAppointmentConfirm}
                 className="w-full"
                 disabled={isSubmitting}
               >
@@ -254,7 +285,7 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
           </div>
         </div>
       )}
-      
+
       {appointmentConfirmed && (
         <BookingConfirmation onReset={handleReset} />
       )}
