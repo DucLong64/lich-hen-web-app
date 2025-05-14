@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +18,7 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ updateAppointmentId }) => {
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeType | null>(null);
   const [appointmentConfirmed, setAppointmentConfirmed] = useState(false);
   const [bookingStep, setBookingStep] = useState<'service' | 'employee' | 'time'>('service');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleServiceSelect = (service: ServiceType) => {
     setSelectedService(service);

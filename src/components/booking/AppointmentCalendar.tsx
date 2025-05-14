@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { format } from 'date-fns';
+import { format, parse } from 'date-fns';
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,9 @@ import { ServiceType } from '@/types/ServiceType';
 import { EmployeeType } from '@/types/EmployeeType';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { createAppointment, AppointmentCreationRequest } from '@/api/apiService';
+import { useToast } from '@/hooks/use-toast';
 
 // Simulate already booked slots
 const bookedSlots: Record<string, string[]> = {
@@ -31,6 +34,9 @@ export const AppointmentCalendar: React.FC<{
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [customHour, setCustomHour] = useState('09');
   const [customMinute, setCustomMinute] = useState('00');
+  const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
 
   if (!selectedService) {
     return (
@@ -52,17 +58,55 @@ export const AppointmentCalendar: React.FC<{
     setCustomMinute(minute);
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (date) {
       const timeString = `${customHour}:${customMinute}`;
 
       if (timeString) {
-        const [hours, minutes] = timeString.split(':');
-        const appointmentDate = new Date(date);
-        appointmentDate.setHours(parseInt(hours, 10));
-        appointmentDate.setMinutes(parseInt(minutes, 10));
+        setIsSubmitting(true);
         
-        onAppointmentConfirm(appointmentDate, timeString);
+        try {
+          // Parse duration from string like "30 phút" to get the number
+          const durationMatch = selectedService.duration.match(/\d+/);
+          const duringTime = durationMatch ? parseInt(durationMatch[0], 10) : 30;
+          
+          // Create ISO datetime string for the API
+          const [hours, minutes] = timeString.split(':');
+          const appointmentDate = new Date(date);
+          appointmentDate.setHours(parseInt(hours, 10));
+          appointmentDate.setMinutes(parseInt(minutes, 10));
+          
+          // Format data for API request
+          const appointmentData: AppointmentCreationRequest = {
+            serviceId: parseInt(selectedService.id, 10),
+            startTime: appointmentDate.toISOString(),
+            duringTime: duringTime,
+            employeeId: selectedEmployee ? parseInt(selectedEmployee.id, 10) : null,
+            notes: notes.trim()
+          };
+          
+          // Send data to API
+          const success = await createAppointment(appointmentData);
+          
+          if (success) {
+            onAppointmentConfirm(appointmentDate, timeString);
+          } else {
+            toast({
+              title: "Đặt lịch thất bại",
+              description: "Có lỗi xảy ra khi đặt lịch. Vui lòng thử lại sau.",
+              variant: "destructive"
+            });
+          }
+        } catch (error) {
+          console.error('Error submitting appointment:', error);
+          toast({
+            title: "Đặt lịch thất bại",
+            description: "Có lỗi xảy ra khi đặt lịch. Vui lòng thử lại sau.",
+            variant: "destructive"
+          });
+        } finally {
+          setIsSubmitting(false);
+        }
       }
     }
   };
@@ -152,16 +196,26 @@ export const AppointmentCalendar: React.FC<{
               </div>
             )}
           </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="notes">Ghi chú</Label>
+            <Input
+              id="notes"
+              placeholder="Nhập ghi chú về lịch hẹn (nếu có)"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
         </CardContent>
         <CardFooter>
           <Button 
             onClick={handleConfirm} 
             className="w-full"
             disabled={
-              !date || isCustomTimeBooked()
+              !date || isCustomTimeBooked() || isSubmitting
             }
           >
-            Xác nhận lịch hẹn
+            {isSubmitting ? "Đang xác nhận..." : "Xác nhận lịch hẹn"}
           </Button>
         </CardFooter>
       </Card>
